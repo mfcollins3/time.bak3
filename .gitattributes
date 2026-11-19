@@ -9,8 +9,10 @@
 *.mts           text eol=lf
 *.ps1           text eol=crlf
 *.sh            text eol=lf
+*.swift         text eol=lf
 *.toml          text eol=lf
 *.yaml          text eol=lf
+*.xcstrings     text eol=lf
 
 .gitattributes  text eol=lf
 .gitignore      text eol=lf

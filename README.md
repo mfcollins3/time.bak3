@@ -26,39 +26,39 @@ and burnout.
 ## Project layout
 
 ```plain
-(repo-root)/                        Root directory
-|-- .claude/                        Local configuration for Claude Code
-|   |-- settings.json               Project-specific settings for Claude Code
-|-- .github/                        GitHub assets and configuration files
-|   |-- copilot/                    GitHub Copilot assets and configuration settings
-|   |   |-- settings.json           Project-specific settings for GitHub Copilot
-|-- docs/                           Technical documentation for Naked Time
-|   |-- adrs/                       Architectural Decision Records (ADRs) that capture important technical decisions that affect development of the Naked Time product
-|   |   |-- README.md               Index of the Architectural Decision Records (ADRs)
-|   |-- README.md                   Index for all of the technical documentation for Naked Time
-|-- src/                            Source code for the Naked Time product
-|   |-- apphost/                    Source code for the Aspire AppHost
-|   |   |-- .node-version           Current version of Node.js. Used by fnm to install and activate the correct version of Node.js for Naked Time.
-|   |   |-- apphost.mts             Aspire AppHost orchestrator configuration
-|   |   |-- aspire.config.json      Configuration file for the Aspire AppHost
-|   |   |-- eslint.config.mjs       Configuration settings for ESLint for the Aspire AppHost
-|   |   |-- package.json            Node.js package manifest for the Aspire AppHost
-|   |   |-- pnpm-lock.yaml          Dependency metadata managed by pnpm for the Aspire AppHost
-|   |   |-- pnpm-workspace.yaml     Additional settings for pnpm
-|   |   |-- README.md               Documentation for the Aspire AppHost
-|   |   |-- tsconfig.apphost.yaml   TypeScript compiler settings for the Aspire AppHost
-|   |-- README.md                   Index for the source code
-|-- .gitattributes                  Settings that control how Git treats repository files
-|-- .gitignore                      List of files or directories that should be excluded from the Git repository
-|-- .mise.toml                      Lists mise packages and versions used by Naked Time and configures what tools mise manages for Naked Time
-|-- .node-version                   Current version of Node.js. Used by fnm to install and activate the correct version of Node.js for Naked Time.
-|-- LICENSE.md                      The license agreement for the Naked Time product and source code
-|-- README.md                       This document; describes the Naked Time product and provides instructions for working with Naked Time and the source code locally
-|-- Run-Time.ps1                    Builds and runs Naked Time locally on Microsoft Windows or for developers who prefer PowerShell on Apple macOS and Linux
-|-- run.sh                          Builds and runs Naked Time locally on Apple macOS or Linux
-|-- Setup-Time.ps1                  One-time initialization script for Microsoft Windows developers or developers that prefer PowerShell on Apple macOS or Linux
-|-- setup.sh                        One-time initialization script for Apple macOS or Linux developers
-|-- time.code-workspace             Visual Studio Code workspace for the Naked Time product
+(repo-root)/                                Root directory
+|-- .claude/                                Local configuration for Claude Code
+|   |-- settings.json                       Project-specific settings for Claude Code
+|-- .github/                                GitHub assets and configuration files
+|   |-- copilot/                            GitHub Copilot assets and configuration settings
+|   |   |-- settings.json                   Project-specific settings for GitHub Copilot
+|-- docs/                                   Technical documentation for Naked Time
+|   |-- adrs/                               Architectural Decision Records (ADRs) that capture important technical decisions that affect development of the Naked Time product
+|   |   |-- README.md                       Index of the Architectural Decision Records (ADRs)
+|   |-- README.md                           Index for all of the technical documentation for Naked Time
+|-- src/                                    Source code for the Naked Time product
+|   |-- apphost/                            Source code for the Aspire AppHost
+|   |-- apple/                              Source code for programs that run on Apple devices
+|   |   |-- Projects/                       Manifest files and source code for the Apple programs and frameworks
+|   |   |   |-- App/                        Source code for the Naked Time application for iOS
+|   |   |   |   |-- Project.swift           Tuist manifest for generating the Xcode project for the Naked Time iOS application
+|   |   |-- Tuist/                          Stores dependencies for the Naked Time iOS application
+|   |   |   |-- Package.swift               Defines Swift package dependencies that are needed to build the Naked Time iOS application
+|   |   |-- .gitignore                      Defines Apple-specific files to exclude from the Git repository
+|   |   |-- Tuist.swift                     Configuration settings that control how Tuist generates the project files and source code
+|   |   |-- Workspace.swift                 Manifest file that describes the Xcode workspace for the Naked Time product
+|   |-- README.md                           Index for the source code
+|-- .gitattributes                          Settings that control how Git treats repository files
+|-- .gitignore                              List of files or directories that should be excluded from the Git repository
+|-- .mise.toml                              Lists mise packages and versions used by Naked Time and configures what tools mise manages for Naked Time
+|-- .node-version                           Current version of Node.js. Used by fnm to install and activate the correct version of Node.js for Naked Time.
+|-- LICENSE.md                              The license agreement for the Naked Time product and source code
+|-- README.md                               This document; describes the Naked Time product and provides instructions for working with Naked Time and the source code locally
+|-- Run-Time.ps1                            Builds and runs Naked Time locally on Microsoft Windows or for developers who prefer PowerShell on Apple macOS and Linux
+|-- run.sh                                  Builds and runs Naked Time locally on Apple macOS or Linux
+|-- Setup-Time.ps1                          One-time initialization script for Microsoft Windows developers or developers that prefer PowerShell on Apple macOS or Linux
+|-- setup.sh                                One-time initialization script for Apple macOS or Linux developers
+|-- time.code-workspace                     Visual Studio Code workspace for the Naked Time product
 ```
 
 ## Getting started
@@ -74,6 +74,7 @@ locally on a development computer.
 * [pnpm](https://pnpm.io/)
 * [fnm](https://github.com/Schniz/fnm)
 * [Aspire CLI](https://aspire.dev/get-started/install-cli/)
+* [mise-en-place](https://mise.jdx.dev/) (**OPTIONAL; for Apple developers**)
 
 ### Cloning the Git repository
 
@@ -134,6 +135,9 @@ repository:
   ```powershell
   &".\Run-Time.ps1"
   ```
+
+For more information on the components of Naked Time, see the
+[source code](src/README.md).
 
 ## Technical documentation
 

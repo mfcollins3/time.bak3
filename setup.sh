@@ -15,6 +15,17 @@ fi
 eval "$(fnm env)"
 fnm use --install-if-missing
 
+# On macOS, use mise to ensure that tuist is installed for building the
+# Apple applications. See .mise.toml for the pinned version.
+if [ "$(uname -s)" = "Darwin" ]; then
+    if ! command -v mise > /dev/null; then
+        echo "error: mise is required on macOS but was not found. See README.md for prerequisites." >&2
+        exit 1
+    fi
+
+    mise install
+fi
+
 pushd src/apphost > /dev/null
 pnpm install
 popd > /dev/null

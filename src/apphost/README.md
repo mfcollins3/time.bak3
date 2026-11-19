@@ -12,6 +12,21 @@ to get Naked Time running locally on the developer's computer.
 The main file of interest is [`apphost.mts`](apphost.mts). This is the AppHost
 specification.
 
+## AppHost layout
+
+```plain
+src/apphost/                    Root directory for the AppHost
+|-- .node-version               Stores the version number of Node.js to use. Used by fnm to install and activate the correct version of Node.js when working with the AppHost.
+|-- apphost.mts                 The AppHost specification that is used to build and run Naked Time locally
+|-- aspire.config.js            Configuration settings used by Aspire to run Naked Time
+|-- eslint.config.mjs           Configuration settings for ESLint to use when scanning the AppHost for issues
+|-- package.json                The Node.js package manifest for the AppHost
+|-- pnpm-lock.yaml              Version information for dependencies that are being used by the AppHost so that pnpm can restore the exact versions
+|-- pnpm-workspace.yaml         pnpm configuration settings for the AppHost
+|-- README.md                   (This file.) Documentation for the AppHost
+|-- tsconfig.apphost.json       Configuration settings for the TypeScript compiler to use when compiling the AppHost source code
+```
+
 ## Starting the AppHost
 
 To start the AppHost, use the `run.sh` or `Run-Time.ps1` scripts from the root
