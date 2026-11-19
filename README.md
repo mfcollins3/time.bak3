@@ -44,3 +44,12 @@ This command will clone the
 [`mfcollins3/time`](https://github.com/mfcollins3/time) repository from GitHub
 into the `time/main` subdirectory. By default, the `gh repo clone` command will
 check out the `main` branch.
+
+## License
+
+Please be sure to review the [license](LICENSE.md). Naked Time is being released
+under a _source available_ license and not an open source license. Naked Time is
+a commercial product that requires users to have a valid license to use the
+product. Licensed users may also use Naked Time source code to customize the
+product for their own use or use the source code to build integrations and
+extensions for the Naked Time product.
