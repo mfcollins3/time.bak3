@@ -1,19 +1,20 @@
 # Copyright 2026 Michael F. Collins, III
 # Licensed under the Naked Time license. See LICENSE.md for details.
 
-*               text=auto
+*                   text=auto
 
-*.json          text eol=lf
-*.md            text eol=lf
-*.mjs           text eol=lf
-*.mts           text eol=lf
-*.ps1           text eol=crlf
-*.sh            text eol=lf
-*.swift         text eol=lf
-*.toml          text eol=lf
-*.yaml          text eol=lf
-*.xcstrings     text eol=lf
+*.code-workspace    text eol=lf
+*.json              text eol=lf
+*.md                text eol=lf
+*.mjs               text eol=lf
+*.mts               text eol=lf
+*.ps1               text eol=crlf
+*.sh                text eol=lf
+*.swift             text eol=lf
+*.toml              text eol=lf
+*.yaml              text eol=lf
+*.xcstrings         text eol=lf
 
-.gitattributes  text eol=lf
-.gitignore      text eol=lf
-.node-version   text eol=lf
+.gitattributes      text eol=lf
+.gitignore          text eol=lf
+.node-version       text eol=lf
