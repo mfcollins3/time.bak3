@@ -8,6 +8,11 @@ if (-not (Get-Command fnm -ErrorAction SilentlyContinue)) {
     exit 1
 }
 
+if (-not (Get-Command mix -ErrorAction SilentlyContinue)) {
+    Write-Error 'Elixir is required but was not found. See README.md for prerequisites.'
+    exit 1
+}
+
 $fnmEnvironment = & fnm env --shell powershell
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
@@ -44,6 +49,28 @@ Push-Location $appHostPath
 
 try {
     & pnpm install
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+}
+finally {
+    Pop-Location
+}
+
+# Fetch the web application's Elixir dependencies, then install its Node.js
+# packages for Vite. The Node.js packages include phoenix, phoenix_html,
+# phoenix_live_view and phoenix_vite from deps/, so the Elixir dependencies
+# must be fetched first.
+$webPath = Join-Path $PSScriptRoot 'src/web'
+Push-Location $webPath
+
+try {
+    & mix deps.get
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+
+    & mix assets.setup
     $exitCode = $LASTEXITCODE
 }
 finally {

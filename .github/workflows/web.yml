@@ -1,0 +1,342 @@
+# Copyright 2026 Michael F. Collins, III
+# Licensed under the Naked Time license. See LICENSE.md for details.
+
+# Builds, tests, and packages the Naked Time web application (src/web), and
+# deploys it to Azure Container Apps with Aspire.
+#
+# - Pull requests run the tests, check the AppHost, and build the container
+#   image for both architectures without publishing it. That also warms the
+#   Docker layer cache.
+# - Pushes to main also publish a multi-platform image (linux/amd64 and
+#   linux/arm64) to GitHub Packages, and then deploy the linux/amd64 image to
+#   Azure with `aspire deploy` and run the database migrations.
+#
+# See docs/deployment.md for the one-time setup of Azure and GitHub.
+
+name: Web
+
+on:
+  pull_request:
+    paths:
+      - "src/web/**"
+      - "src/apphost/**"
+      - ".github/workflows/web.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/web/**"
+      - "src/apphost/**"
+      - ".github/workflows/web.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  ELIXIR_VERSION: "1.20.5"
+  OTP_VERSION: "29.1.2"
+  ASPIRE_VERSION: "17.0.0"
+  PNPM_VERSION: "12"
+  IMAGE: ghcr.io/${{ github.repository_owner }}/time-web
+  APPHOST: src/apphost/apphost.mts
+  # The Aspire CLI installs the AppHost dependencies with
+  # `pnpm install --ignore-workspace`, which ignores the `allowBuilds`
+  # setting in src/apphost/pnpm-workspace.yaml, so the same setting is
+  # provided through the environment (as run.sh and Run-Time.ps1 do).
+  pnpm_config_allow_builds: '{"esbuild":true}'
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: src/web
+    env:
+      MIX_ENV: test
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: erlef/setup-beam@v1
+        with:
+          elixir-version: ${{ env.ELIXIR_VERSION }}
+          otp-version: ${{ env.OTP_VERSION }}
+
+      # Restores the dependencies and compiled build artifacts. The cache is
+      # reused until mix.lock changes.
+      - uses: actions/cache@v6
+        with:
+          path: |
+            src/web/deps
+            src/web/_build
+          key: mix-${{ runner.os }}-${{ env.OTP_VERSION }}-${{ env.ELIXIR_VERSION }}-${{ hashFiles('src/web/mix.lock') }}
+          restore-keys: |
+            mix-${{ runner.os }}-${{ env.OTP_VERSION }}-${{ env.ELIXIR_VERSION }}-
+
+      - run: mix deps.get
+      - run: mix deps.unlock --check-unused
+      - run: mix compile --warnings-as-errors
+      - run: mix format --check-formatted
+      - run: mix test
+
+  apphost:
+    name: Check AppHost
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: src/apphost
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: src/apphost/.node-version
+          cache: pnpm
+          cache-dependency-path: src/apphost/pnpm-lock.yaml
+
+      - name: Install the Aspire CLI
+        run: |
+          curl -sSL https://aspire.dev/install.sh | bash -s -- --version "$ASPIRE_VERSION"
+          echo "$HOME/.aspire/bin" >> "$GITHUB_PATH"
+
+      - run: pnpm install --frozen-lockfile
+
+      # Generates the AppHost SDK in .aspire/modules, which is not committed.
+      - run: aspire restore --apphost apphost.mts --non-interactive
+
+      - run: pnpm run build
+
+  image:
+    name: Image (${{ matrix.arch }})
+    needs: [test]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Each architecture is built on a native runner. Compiling the
+          # Elixir release under QEMU emulation is very slow.
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.IMAGE }}
+
+      - uses: docker/setup-buildx-action@v4
+
+      - if: github.event_name != 'pull_request'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Every stage's layers are stored in the GitHub Actions cache
+      # (mode=max), so the dependency layers in src/web/Dockerfile are reused
+      # until mix.lock or the compile-time configuration changes. Each
+      # architecture has its own cache scope. On main, the image is pushed by
+      # digest; the manifest job then tags the multi-platform image.
+      - id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: src/web
+          platforms: linux/${{ matrix.arch }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=web-${{ matrix.arch }}
+          cache-to: type=gha,scope=web-${{ matrix.arch }},mode=max
+          outputs: ${{ github.event_name != 'pull_request' && format('type=image,name={0},push-by-digest=true,name-canonical=true,push=true', env.IMAGE) || 'type=cacheonly' }}
+
+      - if: github.event_name != 'pull_request'
+        name: Export the image digest
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/digests"
+          touch "$RUNNER_TEMP/digests/${DIGEST#sha256:}"
+
+      - if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v7
+        with:
+          name: digests-${{ matrix.arch }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  manifest:
+    name: Publish multi-platform image
+    if: github.event_name != 'pull_request'
+    needs: [image]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digests-*
+          merge-multiple: true
+
+      - id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=sha,prefix=sha-
+            type=ref,event=branch
+
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create the multi-platform manifest
+        working-directory: ${{ runner.temp }}/digests
+        # The tag and digest lists are split into separate arguments on purpose.
+        run: |
+          # shellcheck disable=SC2046
+          docker buildx imagetools create \
+            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf "$IMAGE@sha256:%s " *)
+
+      - name: Inspect the image
+        run: docker buildx imagetools inspect "$IMAGE:${{ steps.meta.outputs.version }}"
+
+  deploy:
+    name: Deploy to Azure
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    # The deployment uses the linux/amd64 image by digest, so it does not wait
+    # for the multi-platform manifest. (It does wait for both image builds,
+    # because a job that needs a matrix job waits for every matrix entry.)
+    needs: [image, apphost]
+    runs-on: ubuntu-24.04
+    environment: production
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+      packages: read
+    env:
+      Azure__SubscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      Azure__Location: ${{ vars.AZURE_LOCATION }}
+      Azure__ResourceGroup: ${{ vars.AZURE_RESOURCE_GROUP }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: digests-amd64
+          path: ${{ runner.temp }}/digests
+
+      # The Dockerfile uses this image as its final stage, so Aspire re-tags
+      # the image that CI built instead of building the release again.
+      - name: Select the image to deploy
+        working-directory: ${{ runner.temp }}/digests
+        run: echo "WEB_RUNTIME_IMAGE=$IMAGE@sha256:$(ls)" >> "$GITHUB_ENV"
+
+      - uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # Aspire's image build pulls the image from GitHub Packages.
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: src/apphost/.node-version
+          cache: pnpm
+          cache-dependency-path: src/apphost/pnpm-lock.yaml
+
+      - name: Install the Aspire CLI
+        run: |
+          curl -sSL https://aspire.dev/install.sh | bash -s -- --version "$ASPIRE_VERSION"
+          echo "$HOME/.aspire/bin" >> "$GITHUB_PATH"
+
+      - name: Restore the AppHost
+        working-directory: src/apphost
+        run: |
+          pnpm install --frozen-lockfile
+          aspire restore --apphost apphost.mts --non-interactive
+
+      - name: Deploy with Aspire
+        env:
+          Parameters__secret_key_base: ${{ secrets.SECRET_KEY_BASE }}
+        run: aspire deploy --apphost "$APPHOST" --environment Production --non-interactive
+
+      # Runs the Ecto migrations with the Azure Container Apps job. The job
+      # starts after the new revision of the web application is deployed, so
+      # migrations must be compatible with the previous version of the
+      # application (expand and contract).
+      - name: Run the database migrations
+        run: |
+          az extension add --name containerapp --upgrade --only-show-errors
+          execution=$(az containerapp job start \
+            --resource-group "$Azure__ResourceGroup" \
+            --name web-migrate \
+            --query name --output tsv)
+          echo "Started job execution $execution"
+
+          for _ in $(seq 1 60); do
+            status=$(az containerapp job execution show \
+              --resource-group "$Azure__ResourceGroup" \
+              --name web-migrate \
+              --job-execution-name "$execution" \
+              --query properties.status --output tsv)
+            echo "Status: $status"
+            case "$status" in
+              Succeeded) exit 0 ;;
+              Failed|Stopped|Degraded)
+                echo "::error::The database migration job execution $execution finished with status $status."
+                exit 1
+                ;;
+            esac
+            sleep 10
+          done
+
+          echo "::error::Timed out waiting for the database migration job execution $execution."
+          exit 1

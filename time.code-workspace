@@ -8,6 +8,9 @@
 		},
 		{
 			"path": "src/apple"
+		},
+		{
+			"path": "src/web"
 		}
 	],
 	"settings": {}

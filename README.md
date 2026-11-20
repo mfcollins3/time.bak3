@@ -32,9 +32,12 @@ and burnout.
 |-- .github/                                GitHub assets and configuration files
 |   |-- copilot/                            GitHub Copilot assets and configuration settings
 |   |   |-- settings.json                   Project-specific settings for GitHub Copilot
+|   |-- workflows/                          GitHub Actions workflows
+|   |   |-- web.yml                         Tests, builds, and publishes the web application image and deploys it to Azure
 |-- docs/                                   Technical documentation for Naked Time
 |   |-- adrs/                               Architectural Decision Records (ADRs) that capture important technical decisions that affect development of the Naked Time product
 |   |   |-- README.md                       Index of the Architectural Decision Records (ADRs)
+|   |-- deployment.md                       Instructions for deploying Naked Time to Microsoft Azure
 |   |-- README.md                           Index for all of the technical documentation for Naked Time
 |-- src/                                    Source code for the Naked Time product
 |   |-- apphost/                            Source code for the Aspire AppHost
@@ -73,6 +76,7 @@ locally on a development computer.
 * [GitHub CLI](https://cli.github.com)
 * [pnpm](https://pnpm.io/)
 * [fnm](https://github.com/Schniz/fnm)
+* [Elixir](https://elixir-lang.org/install.html)
 * [Aspire CLI](https://aspire.dev/get-started/install-cli/)
 * [mise-en-place](https://mise.jdx.dev/) (**OPTIONAL; for Apple developers**)
 

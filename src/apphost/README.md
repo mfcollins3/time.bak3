@@ -34,3 +34,22 @@ directory of the Naked Time repository. After the AppHost starts, it will
 display the URL of the [Aspire Dashboard](https://aspire.dev/dashboard/) that
 you can use to see all of the executing components and obtain the URLs to use
 to access the web applications, APIs, and services.
+
+## Deploying to Azure
+
+When the AppHost is published (`aspire publish` or `aspire deploy`), it adds
+an Azure Container Apps environment and deploys the web application as a
+container app, with the Ecto migrations as a Container Apps job. The web
+application and the migration job authenticate to Azure Database for
+PostgreSQL with the `web-identity` user-assigned managed identity. Local
+runs (`aspire run`) are not affected.
+
+The deployment uses these inputs:
+
+| Name | Kind | Description |
+| ---- | ---- | ----------- |
+| `secret-key-base` | Secret parameter (`Parameters__secret_key_base`) | The Phoenix secret key base |
+| `WEB_RUNTIME_IMAGE` | Environment variable (optional) | A prebuilt web application image to deploy, instead of building the release from source |
+| `Azure__SubscriptionId`, `Azure__Location`, `Azure__ResourceGroup` | Environment variables | The Azure deployment target |
+
+See [Deploying Naked Time](../../docs/deployment.md) for details.
