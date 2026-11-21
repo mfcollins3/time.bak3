@@ -75,11 +75,11 @@ COPY config/config.exs config/${MIX_ENV}.exs config/
 RUN mix deps.compile
 
 # Install the Node.js packages in their own layer, which is reused until
-# package.json, pnpm-lock.yaml or pnpm-workspace.yaml changes. The phoenix,
+# package.json or pnpm-lock.yaml changes. The phoenix,
 # phoenix_html, phoenix_live_view and phoenix_vite packages come from deps/,
 # so this runs after mix deps.get. --frozen-lockfile installs exactly what
 # the lockfile lists and fails if the lockfile is out of date.
-COPY assets/package.json assets/pnpm-lock.yaml assets/pnpm-workspace.yaml assets/
+COPY assets/package.json assets/pnpm-lock.yaml assets/
 RUN pnpm --dir assets install --frozen-lockfile
 
 COPY priv priv
