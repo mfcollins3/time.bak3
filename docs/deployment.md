@@ -42,10 +42,17 @@ decisions behind this setup.
    az ad app federated-credential create --id <app-id> --parameters '{
      "name": "github-production",
      "issuer": "https://token.actions.githubusercontent.com",
-     "subject": "repo:mfcollins3/time:environment:production",
+     "subject": "repo:mfcollins3@104274/time@1465727868:environment:production",
      "audiences": ["api://AzureADTokenExchange"]
    }'
    ```
+
+   The subject must match the claim GitHub sends exactly. This repository's
+   OIDC subject includes the immutable owner and repository IDs
+   (`repo:<owner>@<owner-id>/<repo>@<repo-id>:environment:production`), not
+   the plain `repo:mfcollins3/time:...` form. If `azure/login` fails with
+   `AADSTS700213: No matching federated identity record found`, copy the
+   `subject claim` line from the job log into the credential.
 
 1. Grant the service principal permission to create resources and role
    assignments. `Owner` on the subscription, or `Contributor` and
