@@ -94,6 +94,22 @@ jobs:
       - run: mix deps.unlock --check-unused
       - run: mix compile --warnings-as-errors
       - run: mix format --check-formatted
+
+      # The LiveView tests render the root layout, which reads the Vite
+      # manifest (priv/static/.vite/manifest.json), so the assets must be
+      # built before the tests run.
+      - uses: pnpm/action-setup@v6
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+          cache-dependency-path: src/web/assets/pnpm-lock.yaml
+
+      - run: mix assets.setup
+      - run: mix assets.build
       - run: mix test
 
   apphost:
