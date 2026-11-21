@@ -103,6 +103,9 @@ if (isPublishMode) {
         })
         .withAzureUserAssignedIdentity(webIdentity)
         .withEnvironment('PGUSER', webIdentityName)
+        // config/runtime.exs requires the secret key base to boot, even
+        // though the migrations do not use it.
+        .withEnvironment('SECRET_KEY_BASE', secretKeyBase)
         .publishAsAzureContainerAppJob();
 
     const webEndpoint = await web.getEndpoint('http');
